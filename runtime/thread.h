@@ -470,6 +470,13 @@ class Thread {
   jobject CreateInternalStackTrace(const ScopedObjectAccessAlreadyRunnable& soa) const
       SHARED_LOCKS_REQUIRED(Locks::mutator_lock_);
 
+  // Create the internal representation of a stack trace, that is more time
+  // and space efficient to compute than the StackTraceElement[].
+  template<bool kTransactionActive>
+  mirror::ObjectArray<mirror::Object>* CreateInternalStackTraceToArray(
+    const ScopedObjectAccessAlreadyRunnable& soa) const
+      SHARED_LOCKS_REQUIRED(Locks::mutator_lock_);
+
   // Convert an internal stack trace representation (returned by CreateInternalStackTrace) to a
   // StackTraceElement[]. If output_array is NULL, a new array is created, otherwise as many
   // frames as will fit are written into the given array. If stack_depth is non-NULL, it's updated

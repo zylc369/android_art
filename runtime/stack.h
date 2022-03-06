@@ -28,6 +28,8 @@
 #include "utils.h"
 #include "verify_object.h"
 
+#include "InstrumentationExt.h"
+
 namespace art {
 
 namespace mirror {
@@ -355,6 +357,16 @@ class ShadowFrame {
     return OFFSETOF_MEMBER(ShadowFrame, vregs_);
   }
 
+#if BW_CUSTOM_ROM_ENABLE == 1
+  Lsp<TraceMethodInfoBase> GetTraceMethodInfo() {
+    return mTraceMethodInfoBase;
+  }
+
+  void SetTraceMethodInfo(Lsp<TraceMethodInfoBase> traceMethodInfoBase) {
+    mTraceMethodInfoBase = traceMethodInfoBase;
+  }
+#endif
+
  private:
   ShadowFrame(uint32_t num_vregs, ShadowFrame* link, mirror::ArtMethod* method,
               uint32_t dex_pc, bool has_reference_array)
@@ -379,6 +391,10 @@ class ShadowFrame {
   StackReference<mirror::Object>* References() {
     return const_cast<StackReference<mirror::Object>*>(const_cast<const ShadowFrame*>(this)->References());
   }
+
+#if BW_CUSTOM_ROM_ENABLE == 1
+  Lsp<TraceMethodInfoBase> mTraceMethodInfoBase;
+#endif
 
 #if defined(ART_USE_PORTABLE_COMPILER)
   enum ShadowFrameFlag {

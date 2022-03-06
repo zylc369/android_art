@@ -39,6 +39,8 @@
 #include "runtime_stats.h"
 #include "safe_map.h"
 
+#include "InstrumentationExt.h"
+
 namespace art {
 
 namespace gc {
@@ -415,6 +417,10 @@ class Runtime {
     return &instrumentation_;
   }
 
+  InstrumentationExt* GetInstrumentationExt() {
+    return mInstrumentationExt;
+  }
+
   bool UseCompileTimeClassPath() const {
     return use_compile_time_class_path_;
   }
@@ -616,6 +622,8 @@ class Runtime {
   std::string method_trace_file_;
   size_t method_trace_file_size_;
   instrumentation::Instrumentation instrumentation_;
+
+  InstrumentationExt* mInstrumentationExt;
 
   typedef AllocationTrackingSafeMap<jobject, std::vector<const DexFile*>,
                                     kAllocatorTagCompileTimeClassPath, JobjectComparator>

@@ -18,6 +18,8 @@ LOCAL_PATH := $(call my-dir)
 
 include art/build/Android.common_build.mk
 
+BW_C_INCLUDE := $(LOCAL_PATH)/../runtime/bw $(LOCAL_PATH)/../../libbwnativehelper/include
+
 LIBART_COMPILER_SRC_FILES := \
 	compiled_method.cc \
 	dex/global_value_numbering.cc \
@@ -250,7 +252,7 @@ $$(ENUM_OPERATOR_OUT_GEN): $$(GENERATED_SRC_DIR)/%_operator_out.cc : $(LOCAL_PAT
     include $(LLVM_GEN_INTRINSICS_MK)
   endif
 
-  LOCAL_C_INCLUDES += $(ART_C_INCLUDES) art/runtime
+  LOCAL_C_INCLUDES += $(BW_C_INCLUDE) $(ART_C_INCLUDES) art/runtime
 
   ifeq ($$(art_target_or_host),host)
     LOCAL_LDLIBS += -ldl -lpthread

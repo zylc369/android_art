@@ -31,6 +31,9 @@
 #endif
 #include <sys/resource.h>
 
+#include <BWNativeHelper/BWMacro.h>
+#include <BWLog.h>
+
 namespace art {
 
 static void EnableDebugger() {
@@ -128,6 +131,15 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env, jclass, jlong token, ji
   // Our system thread ID, etc, has changed so reset Thread state.
   thread->InitAfterFork();
   EnableDebugFeatures(debug_flags);
+
+#if BW_CUSTOM_ROM_ENABLE == 1
+  jclass clazzBWUtils = env->FindClass("android/bw/BWUtils");
+  jmethodID methodNeedsInterpreter = env->GetStaticMethodID(clazzBWUtils, "needsInterpreter", "(I)Z");
+  if (env->CallStaticBooleanMethod(clazzBWUtils, methodNeedsInterpreter, getuid())) {
+    BWLOGI("[*] ZygoteHooks_nativePostForkChild - 应用将会以解释执行启动。pid=%d, uid=%d", getpid(), getuid());
+    Runtime::Current()->GetInstrumentation()->ForceInterpretOnly();
+  }
+#endif
 
   if (instruction_set != nullptr) {
     ScopedUtfChars isa_string(env, instruction_set);

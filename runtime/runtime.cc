@@ -149,6 +149,7 @@ Runtime::Runtime()
       implicit_so_checks_(false),
       implicit_suspend_checks_(false),
       is_native_bridge_loaded_(false) {
+  mInstrumentationExt = new InstrumentationExt();
 }
 
 Runtime::~Runtime() {
@@ -209,6 +210,10 @@ Runtime::~Runtime() {
   delete null_pointer_handler_;
   delete suspend_handler_;
   delete stack_overflow_handler_;
+
+  if (NULL != mInstrumentationExt) {
+    delete mInstrumentationExt;
+  }
 }
 
 struct AbortState {

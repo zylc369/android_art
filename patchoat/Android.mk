@@ -18,6 +18,8 @@ LOCAL_PATH := $(call my-dir)
 
 include art/build/Android.executable.mk
 
+BW_C_INCLUDE := $(LOCAL_PATH)/../runtime/bw $(LOCAL_PATH)/../../libbwnativehelper/include
+
 PATCHOAT_SRC_FILES := \
 	patchoat.cc
 
@@ -30,16 +32,16 @@ else
 endif
 
 ifeq ($(ART_BUILD_TARGET_NDEBUG),true)
-  $(eval $(call build-art-executable,patchoat,$(PATCHOAT_SRC_FILES),libcutils,art/compiler,target,ndebug,$(patchoat_arch),libz))
+  $(eval $(call build-art-executable,patchoat,$(PATCHOAT_SRC_FILES),libcutils,$(BW_C_INCLUDE) art/compiler,target,ndebug,$(patchoat_arch),libz))
 endif
 ifeq ($(ART_BUILD_TARGET_DEBUG),true)
-  $(eval $(call build-art-executable,patchoat,$(PATCHOAT_SRC_FILES),libcutils,art/compiler,target,debug,$(patchoat_arch),libz))
+  $(eval $(call build-art-executable,patchoat,$(PATCHOAT_SRC_FILES),libcutils,$(BW_C_INCLUDE) art/compiler,target,debug,$(patchoat_arch),libz))
 endif
 
 # We always build patchoat and dependencies, even if the host build is otherwise disabled, since they are used to cross compile for the target.
 ifeq ($(ART_BUILD_NDEBUG),true)
-  $(eval $(call build-art-executable,patchoat,$(PATCHOAT_SRC_FILES),,art/compiler,host,ndebug,,libz))
+  $(eval $(call build-art-executable,patchoat,$(PATCHOAT_SRC_FILES),,$(BW_C_INCLUDE) art/compiler,host,ndebug,,libz))
 endif
 ifeq ($(ART_BUILD_DEBUG),true)
-  $(eval $(call build-art-executable,patchoat,$(PATCHOAT_SRC_FILES),,art/compiler,host,debug,,libz))
+  $(eval $(call build-art-executable,patchoat,$(PATCHOAT_SRC_FILES),,$(BW_C_INCLUDE) art/compiler,host,debug,,libz))
 endif

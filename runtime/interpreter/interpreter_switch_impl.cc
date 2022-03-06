@@ -15,6 +15,11 @@
  */
 
 #include "interpreter_common.h"
+#include "InstrumentationExt.h"
+#include "log/BWDump.h"
+#include <BWNativeHelper/BWMacro.h>
+#include <BWNativeHelper/BWNativeUtils.h>
+#include "BWArtUtils.h"
 
 namespace art {
 namespace interpreter {
@@ -57,9 +62,87 @@ namespace interpreter {
     }                                                                                           \
   } while (false)
 
+/**
+ * 是否跟踪指令。
+ */
+#define IsTraceInstruction(obj) ( (!((obj).IsEmpty())) && (obj)->IsEnable() && (GRANULARITY_LEVEL_INSTRUCTION == ((obj)->granularity)) )
+// #define IsHookInstruction(obj)
+
+// static ArtMethod* FindMethod(Class* c, const char* name, const char* sig, bool is_static) {
+//   Thread* self = Thread::Current();
+//   ScopedObjectAccess soa(self);
+//   StackHandleScope<1> hs(self);
+//   Handle<mirror::Class> h_class(hs.NewHandle(c));
+//   if (!Runtime::Current()->GetClassLinker()->EnsureInitialized(h_class, true, true)) {
+//     return NULL;
+//   }
+
+//   ArtMethod* method = NULL;
+//   if (is_static) {
+//     method = c->FindDirectMethod(name, sig);
+//   } else {
+//     method = c->FindVirtualMethod(name, sig);
+//     if (method == NULL) {
+//       // No virtual method matching the signature.  Search declared
+//       // private methods and constructors.
+//       method = c->FindDeclaredDirectMethod(name, sig);
+//     }
+//   }
+//   return method;
+// }
+
 template<bool do_access_check, bool transaction_active>
 JValue ExecuteSwitchImpl(Thread* self, MethodHelper& mh, const DexFile::CodeItem* code_item,
                          ShadowFrame& shadow_frame, JValue result_register) {
+#if BW_CUSTOM_ROM_ENABLE == 1
+  bool isTraceInstruction = false;
+  InstrumentationExt* instrumentationExt = Runtime::Current()->GetInstrumentationExt();
+  ArtMethod* method = shadow_frame.GetMethod();
+  Lsp<TraceMethodInfoBase> traceMethodInfoBase = shadow_frame.GetTraceMethodInfo();
+  // 首先根据在堆栈中的跟踪/提示信息判断是否启用对这个方法进行跟踪或提示，如果未启用，则再查询当前方法是否启用了跟踪/提示信息。
+  if (traceMethodInfoBase.IsEmpty() || !traceMethodInfoBase->IsEnable()) {
+    if (instrumentationExt->IsTrace(*method, traceMethodInfoBase)) {
+      // LOG(INFO) << "[*] 跟踪这个方法：" << method->GetName();
+      shadow_frame.SetTraceMethodInfo(traceMethodInfoBase->Clone());
+
+      // 判断是否需要打印调用堆栈。调用堆栈只在“源头”方法处打印。
+      if ((0 == traceMethodInfoBase->deep) && traceMethodInfoBase->IsPrintCallStack()) {
+        PrintCallStack(self);
+      }
+    }
+  }
+  // 提示进入了方法。
+  if (!traceMethodInfoBase.IsEmpty() && traceMethodInfoBase->IsEnable()) {
+    // LOG(INFO) << "[*] 包名：" << Runtime::Current()->GetInstrumentationExt()->GetPackageName() << "，" <<
+    //   prettyMethod.c_str() << "，uid：" << Runtime::Current()->GetInstrumentationExt()->GetUID();
+    BWDump::PrintMethodInfo(shadow_frame);
+  }
+
+  isTraceInstruction = IsTraceInstruction(traceMethodInfoBase);
+
+  // 初始化Hook指令信息。
+  std::map<int64_t, Lsp<HookMethodInstInfoBase>> hookMethodInstInfos;
+  size_t currentMethodHash = InstrumentationExt::GenMethodHash(*method);
+  if (instrumentationExt->QueryHookMethodInstInfo(currentMethodHash, hookMethodInstInfos)) {
+    if (0 != hookMethodInstInfos.size()) {
+      std::map<int64_t, Lsp<HookMethodInstInfoBase>>::iterator iter;
+      for (iter = hookMethodInstInfos.begin(); iter != hookMethodInstInfos.end(); iter++) {
+        Lsp<InstructionLocation> instructionLocation = iter->second->instructionLocation;
+        int64_t d = instrumentationExt->mDexPCCatch.GetPC(
+          currentMethodHash, instructionLocation->instLineNum, code_item);
+        if (-1 != d) {
+          instructionLocation->dexPC = d;
+        } else {
+          BWDUMPE("[-] ExecuteSwitchImpl - 获得行号对应的dex pc失败。"
+            "类描述符：%s，方法名：%s，方法签名：%s。行号：%ld。",
+            method->GetDeclaringClassDescriptor(), method->GetName(),
+            method->GetSignature().ToString().c_str(), instructionLocation->instLineNum);
+        }
+      }
+    }
+  }
+#endif
+
   bool do_assignability_check = do_access_check;
   if (UNLIKELY(!shadow_frame.HasReferenceArray())) {
     LOG(FATAL) << "Invalid shadow frame for interpreter use";
@@ -86,7 +169,38 @@ JValue ExecuteSwitchImpl(Thread* self, MethodHelper& mh, const DexFile::CodeItem
   while (true) {
     dex_pc = inst->GetDexPc(insns);
     shadow_frame.SetDexPC(dex_pc);
-    TraceExecution(shadow_frame, inst, dex_pc, mh);
+
+#if BW_CUSTOM_ROM_ENABLE == 1
+    // 现在变成可动态控制的跟踪。
+    // TraceExecution(shadow_frame, inst, dex_pc, mh);
+    // if (isTraceInstruction) {
+    //   BWDump::Dump(shadow_frame, inst, dex_pc, mh);
+    // }
+
+    // // 查找Hook指令信息。
+    // Lsp<HookMethodInstInfoBase> hookMethodInstInfo;
+    // if (0 != hookMethodInstInfos.size()) {
+    //   std::map<int64_t, Lsp<HookMethodInstInfoBase>>::iterator iter;
+    //   for (iter = hookMethodInstInfos.begin(); iter != hookMethodInstInfos.end(); iter++) {
+    //     if ((uint32_t)iter->second->instructionLocation->dexPC == dex_pc) {
+    //       hookMethodInstInfo = iter->second;
+    //       break;
+    //     }
+    //   }
+    // }
+    // if (!hookMethodInstInfo.IsEmpty()) {
+    //   BWDUMPI("[*] 当前指令需要Hook。类描述符：%s，方法名：%s，方法签名：%s。行号：%ld，pc=%u。",
+    //       method->GetDeclaringClassDescriptor(), method->GetName(),
+    //       method->GetSignature().ToString().c_str(),
+    //       hookMethodInstInfo->instructionLocation->instLineNum, dex_pc);
+    // }
+    // TODO: 试验。
+    // if (false) {
+    //   ArtMethod* methodToString = FindMethod(method->GetDeclaringClass(), "toString", "()Ljava/lang/String;", false);
+    //   // LOG(INFO) << StringPrintf("methodToString=%p", methodToString);
+    // }
+#endif
+
     inst_data = inst->Fetch16(0);
     switch (inst->Opcode(inst_data)) {
       case Instruction::NOP:

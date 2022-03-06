@@ -18,21 +18,23 @@ LOCAL_PATH := $(call my-dir)
 
 include art/build/Android.executable.mk
 
+BW_C_INCLUDE := $(LOCAL_PATH)/../runtime/bw $(LOCAL_PATH)/../../libbwnativehelper/include
+
 OATDUMP_SRC_FILES := \
 	oatdump.cc
 
 ifeq ($(ART_BUILD_TARGET_NDEBUG),true)
-  $(eval $(call build-art-executable,oatdump,$(OATDUMP_SRC_FILES),libcutils libart-disassembler,art/disassembler,target,ndebug))
+  $(eval $(call build-art-executable,oatdump,$(OATDUMP_SRC_FILES),libcutils libart-disassembler,$(BW_C_INCLUDE) art/disassembler,target,ndebug))
 endif
 ifeq ($(ART_BUILD_TARGET_DEBUG),true)
-  $(eval $(call build-art-executable,oatdump,$(OATDUMP_SRC_FILES),libcutils libartd-disassembler,art/disassembler,target,debug))
+  $(eval $(call build-art-executable,oatdump,$(OATDUMP_SRC_FILES),libcutils libartd-disassembler,$(BW_C_INCLUDE) art/disassembler,target,debug))
 endif
 
 ifeq ($(ART_BUILD_HOST_NDEBUG),true)
-  $(eval $(call build-art-executable,oatdump,$(OATDUMP_SRC_FILES),libart-disassembler,art/disassembler,host,ndebug))
+  $(eval $(call build-art-executable,oatdump,$(OATDUMP_SRC_FILES),libart-disassembler,$(BW_C_INCLUDE) art/disassembler,host,ndebug))
 endif
 ifeq ($(ART_BUILD_HOST_DEBUG),true)
-  $(eval $(call build-art-executable,oatdump,$(OATDUMP_SRC_FILES),libartd-disassembler,art/disassembler,host,debug))
+  $(eval $(call build-art-executable,oatdump,$(OATDUMP_SRC_FILES),libartd-disassembler,$(BW_C_INCLUDE) art/disassembler,host,debug))
 endif
 
 ########################################################################

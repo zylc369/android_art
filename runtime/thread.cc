@@ -1551,6 +1551,36 @@ template jobject Thread::CreateInternalStackTrace<false>(
 template jobject Thread::CreateInternalStackTrace<true>(
     const ScopedObjectAccessAlreadyRunnable& soa) const;
 
+template<bool kTransactionActive>
+mirror::ObjectArray<mirror::Object>* Thread::CreateInternalStackTraceToArray(
+  const ScopedObjectAccessAlreadyRunnable& soa) const {
+  // Compute depth of stack
+  CountStackDepthVisitor count_visitor(const_cast<Thread*>(this));
+  count_visitor.WalkStack();
+  int32_t depth = count_visitor.GetDepth();
+  int32_t skip_depth = count_visitor.GetSkipDepth();
+
+  // Build internal stack trace.
+  BuildInternalStackTraceVisitor<kTransactionActive> build_trace_visitor(soa.Self(),
+                                                                         const_cast<Thread*>(this),
+                                                                         skip_depth);
+  if (!build_trace_visitor.Init(depth)) {
+    return nullptr;  // Allocation failed.
+  }
+  build_trace_visitor.WalkStack();
+  mirror::ObjectArray<mirror::Object>* trace = build_trace_visitor.GetInternalStackTrace();
+  if (kIsDebugBuild) {
+    for (int32_t i = 0; i < trace->GetLength(); ++i) {
+      CHECK(trace->Get(i) != nullptr);
+    }
+  }
+  return trace;
+}
+template mirror::ObjectArray<mirror::Object>* Thread::CreateInternalStackTraceToArray<false>(
+    const ScopedObjectAccessAlreadyRunnable& soa) const;
+template mirror::ObjectArray<mirror::Object>* Thread::CreateInternalStackTraceToArray<true>(
+    const ScopedObjectAccessAlreadyRunnable& soa) const;
+
 jobjectArray Thread::InternalStackTraceToStackTraceElementArray(
     const ScopedObjectAccessAlreadyRunnable& soa, jobject internal, jobjectArray output_array,
     int* stack_depth) {

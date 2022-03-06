@@ -18,6 +18,8 @@ LOCAL_PATH := $(call my-dir)
 
 include art/build/Android.common_build.mk
 
+BW_C_INCLUDE := $(LOCAL_PATH)/bw $(LOCAL_PATH)/../../libbwnativehelper/include
+
 LIBART_COMMON_SRC_FILES := \
   atomic.cc.arm \
   barrier.cc \
@@ -160,7 +162,12 @@ LIBART_COMMON_SRC_FILES := \
   verifier/reg_type_cache.cc \
   verifier/register_line.cc \
   well_known_classes.cc \
-  zip_archive.cc
+  zip_archive.cc \
+  bw/BWArtUtils.cc \
+  bw/InstrumentationExt.cc \
+  bw/BWNative.cc \
+  bw/log/BWDump.cc \
+  bw/BWMethodFilter.cc
 
 LIBART_COMMON_SRC_FILES += \
   arch/context.cc \
@@ -418,10 +425,10 @@ $$(ENUM_OPERATOR_OUT_GEN): $$(GENERATED_SRC_DIR)/%_operator_out.cc : $(LOCAL_PAT
     endif
   endif
 
-  LOCAL_C_INCLUDES += $$(ART_C_INCLUDES)
+  LOCAL_C_INCLUDES += $$(ART_C_INCLUDES) $(BW_C_INCLUDE)
   LOCAL_C_INCLUDES += art/sigchainlib
 
-  LOCAL_SHARED_LIBRARIES += liblog libnativehelper libnativebridge
+  LOCAL_SHARED_LIBRARIES += liblog libnativehelper libnativebridge libbwnativehelper
   include external/libcxx/libcxx.mk
   LOCAL_SHARED_LIBRARIES += libbacktrace_libc++
   ifeq ($$(art_target_or_host),target)

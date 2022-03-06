@@ -18,6 +18,7 @@
 
 #include "field_helper.h"
 #include "mirror/array-inl.h"
+#include <BWNativeHelper/BWMacro.h>
 
 namespace art {
 namespace interpreter {
@@ -539,6 +540,19 @@ bool DoCall(ArtMethod* method, Thread* self, ShadowFrame& shadow_frame,
   const char* old_cause = self->StartAssertNoThreadSuspension("DoCall");
   void* memory = alloca(ShadowFrame::ComputeSize(num_regs));
   ShadowFrame* new_shadow_frame(ShadowFrame::Create(num_regs, &shadow_frame, method, 0, memory));
+
+#if BW_CUSTOM_ROM_ENABLE == 1
+  Lsp<TraceMethodInfoBase> shadowFrameTraceMethodInfo = shadow_frame.GetTraceMethodInfo();
+  // 判断是否传递跟踪标志。
+  if (!shadowFrameTraceMethodInfo.IsEmpty() && shadowFrameTraceMethodInfo->IsTransitive()) {
+    InstrumentationExt* instrumentationExt = Runtime::Current()->GetInstrumentationExt();
+    if (!instrumentationExt->mBWMethodFilter->IsFilter(method)) {
+      Lsp<TraceMethodInfoBase> newTraceMethodInfo = shadowFrameTraceMethodInfo->Clone();
+      newTraceMethodInfo->AddDeep();
+      new_shadow_frame->SetTraceMethodInfo(newTraceMethodInfo);
+    }
+  }
+#endif
 
   // Initialize new shadow frame.
   const size_t first_dest_reg = num_regs - num_ins;

@@ -18,6 +18,8 @@ LOCAL_PATH := $(call my-dir)
 
 include art/build/Android.common_build.mk
 
+BW_C_INCLUDE := $(LOCAL_PATH)/../runtime/bw $(LOCAL_PATH)/../../libbwnativehelper/include
+
 LIBART_DISASSEMBLER_SRC_FILES := \
 	disassembler.cc \
 	disassembler_arm.cc \
@@ -78,7 +80,7 @@ define build-libart-disassembler
     LOCAL_SHARED_LIBRARIES += libart
   endif
 
-  LOCAL_C_INCLUDES += $(ART_C_INCLUDES) art/runtime
+  LOCAL_C_INCLUDES += $(BW_C_INCLUDE) $(ART_C_INCLUDES) art/runtime
 
   LOCAL_ADDITIONAL_DEPENDENCIES := art/build/Android.common_build.mk
   LOCAL_ADDITIONAL_DEPENDENCIES += $(LOCAL_PATH)/Android.mk
